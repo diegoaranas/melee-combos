@@ -28,8 +28,11 @@ held out of training. That is a loose check: most cool punishes were never clipp
 | Per-frame features (≥20% / kills) | `framefeat.js` (20 workers) | `data/ff_*.jsonl` |
 | Ranking | `rank.py` (gradient boosting; `--logit` for linear) | `data/ranked.csv` |
 | Opponent quit mid-punish | `ragequits.py` | `out/queue_ragequits.json` |
+| Current top N as a table + queue | `top.py [N]` | `out/queue_top.json` |
+| Model explanation (effect curves, SHAP) | `explain.py`, `explain_template.html` | `data/explain.json`, `out/combo_ranker.html` |
 
-Play any queue with `play.bat out\<queue>.json`.
+Play any queue with `.\play.bat out\<queue>.json` (PowerShell needs the `.\`), or
+`.\play_top.bat [N]` to rebuild and play the current top N (default 20).
 
 In slippi-js v6 conversions, `playerIndex` is the player being hit and `lastHitBy` is the attacker
 (stored as `p` / `opp` in the index).

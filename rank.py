@@ -100,8 +100,11 @@ def fit(mask_out=None):
     if MODEL == "gbm":
         # Positives are rare; upweight them to balance the classes.
         w = w * np.where(yy == 1, (yy == 0).sum() / max(1, (yy == 1).sum()), 1.0)
+        # early_stopping defaults to on above 10k rows, holding out a random 10% (which can
+        # drop clips from training) and making every fit different; keep it off and seeded.
         m = HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05, max_iter=200,
-                                           min_samples_leaf=50, l2_regularization=1.0)
+                                           min_samples_leaf=50, l2_regularization=1.0,
+                                           early_stopping=False, random_state=0)
     else:
         m = LogisticRegression(C=C, class_weight="balanced", max_iter=2000)
     m.fit(Xs, yy, sample_weight=w)

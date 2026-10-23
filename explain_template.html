@@ -1,0 +1,284 @@
+<title>Inside the Combo Ranker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; charts break wider into a grid of small multiples. */
+:root {
+  --bg: #f7f8fa; --panel: #ffffff; --fg: #15171c; --fg-2: #4d5260; --muted: #7b8191;
+  --rule: #e2e5eb; --grid: #eceef2; --accent: #2a78d6; --neg: #e34948;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121418; --panel: #1a1d22; --fg: #eef0f3; --fg-2: #b9bec9; --muted: #8a909c;
+  --rule: #2c3038; --grid: #252930; --accent: #3987e5; --neg: #e66767;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121418; --panel: #1a1d22; --fg: #eef0f3; --fg-2: #b9bec9; --muted: #8a909c;
+  --rule: #2c3038; --grid: #252930; --accent: #3987e5; --neg: #e66767;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+  color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 400 17px/1.55 var(--body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 48px; }
+.prose { max-width: 66ch; display: grid; gap: 12px; }
+h1, h2 { font-family: var(--display); font-weight: 700; letter-spacing: .01em; text-wrap: balance; margin: 0; line-height: 1.1; }
+h1 { font-size: clamp(36px, 6vw, 56px); }
+h2 { font-size: 30px; }
+p { margin: 0; color: var(--fg-2); }
+p strong { color: var(--fg); }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+code, .num { font-family: var(--mono); font-size: .88em; font-variant-numeric: tabular-nums; }
+section { display: grid; gap: 20px; }
+.tree { font: 13px/1.5 var(--mono); background: var(--panel); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 16px 18px; overflow-x: auto; color: var(--fg-2); margin: 0; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.fact { border-top: 2px solid var(--fg); padding-top: 10px; display: grid; gap: 4px; }
+.fact b { font: 600 22px/1.2 var(--display); letter-spacing: .02em; }
+.fact span { color: var(--fg-2); font-size: 15px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 12px 8px; min-width: 0; position: relative; }
+.card h3 { margin: 0 0 2px; font: 600 15px/1.3 var(--body); }
+.card .range { font: 12px var(--mono); color: var(--muted); }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { fill: var(--muted); font: 11px var(--mono); }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; min-width: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--fg-2); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.tip { position: fixed; pointer-events: none; background: var(--fg); color: var(--bg); font: 12px/1.45 var(--mono);
+  padding: 7px 9px; border-radius: 4px; max-width: 280px; z-index: 20; }
+.toggle { justify-self: start; font: 600 14px var(--body); color: var(--accent); background: none; border: 1px solid var(--rule);
+  border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+.toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; font: 13px var(--mono); font-variant-numeric: tabular-nums; width: 100%; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--fg-2); font-weight: 600; }
+ul.caveats { margin: 0; padding-left: 20px; color: var(--fg-2); display: grid; gap: 8px; max-width: 70ch; }
+@media (prefers-reduced-motion: no-preference) { .bar { transition: opacity .15s; } }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <span class="eyebrow">melee-combos · ranking model</span>
+    <h1>Inside the combo ranker</h1>
+    <p>The ranker scores each of your ~116k punishes with a <strong>gradient-boosted tree ensemble</strong>: 200 small decision trees, each adding a little to the score. Below is what it responds to and why the current top combos rank where they do.</p>
+  </header>
+
+  <section>
+    <h2>How a score is built</h2>
+    <div class="prose">
+      <p>Each tree asks at most three yes/no questions about a punish and ends in a leaf holding a small number. One tree might look like this:</p>
+    </div>
+    <pre class="tree">hits ≥ 6?
+├─ no  → starting % &lt; 20?  …
+└─ yes → average gap &lt; 60 frames?
+          ├─ yes → kill?  yes: +0.8   no: +0.2
+          └─ no  → −0.3</pre>
+    <div class="prose">
+      <p>Trees are fitted one after another, each correcting what the sum so far gets wrong, and each scaled down to a small nudge. The score is the sum of all 200 leaves a punish lands in. Its units are log-odds of "looks like something Diego clips". Only the order is used.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>200 trees, depth 3</b><span>Each tree can combine up to three features, so it captures "this only matters when that" effects.</span></div>
+      <div class="fact"><b>Labels: 45 clips</b><span>Clipped = 1, everything else = 0. "Not clipped" doesn't mean bad, so the model only learns an ordering.</span></div>
+      <div class="fact"><b>Clips weighted ~2,700×</b><span>Clips and everything else then count equally in total. A "bad" rating will count 20× an unclipped punish.</span></div>
+      <div class="fact"><b>Leaves hold 50+ punishes</b><span>With the small learning rate, this keeps the model from memorizing individual clips.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What moves the score</h2>
+    <div class="prose">
+      <p>Each curve varies one feature and keeps everything else as it was, averaged over __BGN__ of your kill punishes of 40%+. That's the group where "how good is this combo" is a real question. The vertical axis is the change in score, on the <strong>same scale in every chart</strong>, so a taller curve means a feature that matters more.</p>
+    </div>
+    <div class="grid" id="curves"></div>
+  </section>
+
+  <section>
+    <h2>Yes/no features</h2>
+    <div class="prose">
+      <p>The same measurement for features that are either true or false: how much the score changes going from "no" to "yes".</p>
+    </div>
+    <div class="panel"><svg id="binaries" role="img" aria-label="Score change for each yes/no feature"></svg></div>
+  </section>
+
+  <section>
+    <h2>Why the top combos rank where they do</h2>
+    <div class="prose">
+      <p>SHAP values split one combo's score into contributions from each feature. These add up exactly to the combo's score minus the average. Here they're grouped into the six feature families. The first ten rows are the current top 10; the last four are clips of yours, picked at random.</p>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="panel"><svg id="shap" role="img" aria-label="Score contributions by feature group per combo"></svg></div>
+    <button class="toggle" id="tableToggle" aria-expanded="false" aria-controls="shapTable">Show as table</button>
+    <div class="tablewrap" id="shapTable" hidden></div>
+  </section>
+
+  <section>
+    <h2>Reading these charts</h2>
+    <ul class="caveats">
+      <li><strong>Kill style, spectacle and execution barely register.</strong> Off-stage kills, down-B finishes and tech counts shift the score only a little. Your clips don't differ much from ordinary kills on those, so the model hasn't learned to care. Ratings can change that.</li>
+      <li><strong>Correlated features share credit.</strong> Damage, hits and length move together, so one feature's curve understates how much the group matters. Kill is stored twice (as a flag and folded into damage); its yes/no bar toggles both.</li>
+      <li><strong>Zero-to-death shows no effect</strong> because the starting-percent feature already carries that information.</li>
+      <li><strong>Some features are flat.</strong> "Different moves" and "time opponent is off-stage" have no measurable effect. That's a sign they need better definitions, not proof they don't matter.</li>
+    </ul>
+  </section>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const D = __DATA__;
+const SERIES = ["Payoff", "Tightness", "Variety", "Kill style", "Execution", "Spectacle"];
+const SVAR = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6"];
+const NS = "http://www.w3.org/2000/svg";
+const tip = document.getElementById("tip");
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const el = (name, attrs = {}, parent) => {
+  const e = document.createElementNS(NS, name);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+const fmt = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2);
+function showTip(ev, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const x = Math.min(ev.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+  tip.style.left = x + "px"; tip.style.top = (ev.clientY + 14) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+
+// ---- Effect curves: small multiples on one shared y-domain ----
+(function curves() {
+  const all = D.curves.flatMap((c) => c.y);
+  const ymin = Math.min(0, ...all), ymax = Math.max(0, ...all);
+  const pad = (ymax - ymin) * 0.08;
+  const y0 = ymin - pad, y1 = ymax + pad;
+  const W = 260, H = 130, L = 34, R = 8, T = 8, B = 22;
+  const host = document.getElementById("curves");
+  const ticks = [Math.ceil(y0 * 2) / 2];
+  while (ticks[ticks.length - 1] + 0.5 <= y1) ticks.push(ticks[ticks.length - 1] + 0.5);
+  const order = [...D.curves].sort((a, b) => (Math.max(...b.y) - Math.min(...b.y)) - (Math.max(...a.y) - Math.min(...a.y)));
+  for (const c of order) {
+    const card = document.createElement("div"); card.className = "card";
+    const span = Math.max(...c.y) - Math.min(...c.y);
+    card.innerHTML = `<h3>${c.label}</h3><div class="range">swing ${span.toFixed(2)}</div>`;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${c.label}: score change across its range` }, card);
+    const xs = c.x, xmin = xs[0], xmax = xs[xs.length - 1] === xmin ? xmin + 1 : xs[xs.length - 1];
+    const sx = (v) => L + (v - xmin) / (xmax - xmin) * (W - L - R);
+    const sy = (v) => T + (y1 - v) / (y1 - y0) * (H - T - B);
+    for (const t of ticks) {
+      el("line", { x1: L, x2: W - R, y1: sy(t), y2: sy(t), stroke: t === 0 ? "var(--muted)" : "var(--grid)", "stroke-width": t === 0 ? 1 : 1 }, svg);
+      el("text", { x: L - 5, y: sy(t) + 3.5, "text-anchor": "end" }, svg).textContent = t === 0 ? "0" : (t > 0 ? "+" : "−") + Math.abs(t).toFixed(1);
+    }
+    const lab = (v) => (Math.abs(v) >= 100 ? Math.round(v) : +v.toFixed(v < 10 ? 1 : 0)) + (c.unit === "%" ? "%" : "");
+    el("text", { x: L, y: H - 6, "text-anchor": "start" }, svg).textContent = lab(xmin);
+    el("text", { x: W - R, y: H - 6, "text-anchor": "end" }, svg).textContent = lab(xs[xs.length - 1]) + (c.unit && c.unit !== "%" ? " " + c.unit : "");
+    const d = xs.map((v, i) => `${i ? "L" : "M"}${sx(v).toFixed(1)},${sy(c.y[i]).toFixed(1)}`).join("");
+    el("path", { d, fill: "none", stroke: "var(--accent)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+    const dot = el("circle", { r: 4, fill: "var(--accent)", stroke: "var(--panel)", "stroke-width": 2, visibility: "hidden" }, svg);
+    const hair = el("line", { y1: T, y2: H - B, stroke: "var(--muted)", "stroke-dasharray": "2 3", visibility: "hidden" }, svg);
+    const hit = el("rect", { x: L, y: T, width: W - L - R, height: H - T - B, fill: "transparent" }, svg);
+    hit.addEventListener("pointermove", (ev) => {
+      const r = svg.getBoundingClientRect();
+      const px = (ev.clientX - r.left) / r.width * W;
+      let best = 0;
+      xs.forEach((v, i) => { if (Math.abs(sx(v) - px) < Math.abs(sx(xs[best]) - px)) best = i; });
+      dot.setAttribute("cx", sx(xs[best])); dot.setAttribute("cy", sy(c.y[best])); dot.setAttribute("visibility", "visible");
+      hair.setAttribute("x1", sx(xs[best])); hair.setAttribute("x2", sx(xs[best])); hair.setAttribute("visibility", "visible");
+      showTip(ev, `${c.label}: ${lab(xs[best])}${c.unit && c.unit !== "%" ? " " + c.unit : ""}<br>score ${fmt(c.y[best])}`);
+    });
+    hit.addEventListener("pointerleave", () => { dot.setAttribute("visibility", "hidden"); hair.setAttribute("visibility", "hidden"); hideTip(); });
+    host.appendChild(card);
+  }
+})();
+
+// ---- Yes/no features: diverging horizontal bars from zero ----
+(function binaries() {
+  const svg = document.getElementById("binaries");
+  const rows = [...D.binaries].sort((a, b) => b.delta - a.delta);
+  const W = 720, rowH = 30, L = 190, R = 60, T = 10;
+  const H = T + rows.length * rowH + 24;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const lim = Math.max(0.1, ...rows.map((r) => Math.abs(r.delta))) * 1.1;
+  const sx = (v) => L + (v + lim) / (2 * lim) * (W - L - R);
+  for (const t of [-lim, -lim / 2, 0, lim / 2, lim]) {
+    el("line", { x1: sx(t), x2: sx(t), y1: T, y2: H - 22, stroke: t === 0 ? "var(--muted)" : "var(--grid)" }, svg);
+    el("text", { x: sx(t), y: H - 6, "text-anchor": "middle" }, svg).textContent = t === 0 ? "0" : fmt(t);
+  }
+  rows.forEach((r, i) => {
+    const y = T + i * rowH;
+    const t = el("text", { x: L - 10, y: y + rowH / 2 + 4, "text-anchor": "end" }, svg);
+    t.textContent = r.label; t.style.fill = "var(--fg-2)"; t.style.font = "13px var(--body)";
+    const x0 = sx(0), x1 = sx(r.delta);
+    const w = Math.max(Math.abs(x1 - x0), r.delta === 0 ? 0 : 2);
+    const bar = el("rect", { class: "bar", x: Math.min(x0, x1), y: y + 7, width: w, height: rowH - 14, rx: 3,
+      fill: r.delta >= 0 ? "var(--accent)" : "var(--neg)" }, svg);
+    const v = el("text", { x: (r.delta >= 0 ? Math.max(x0, x1) : Math.min(x0, x1)) + (r.delta >= 0 ? 6 : -6), y: y + rowH / 2 + 4,
+      "text-anchor": r.delta >= 0 ? "start" : "end" }, svg);
+    v.textContent = fmt(r.delta);
+    const hit = el("rect", { x: 0, y, width: W, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("pointermove", (ev) => showTip(ev, `${r.label}<br>score change ${fmt(r.delta)}`));
+    hit.addEventListener("pointerleave", hideTip);
+  });
+})();
+
+// ---- SHAP breakdowns: stacked contributions by group, negatives to the left of zero ----
+(function shap() {
+  const legend = document.getElementById("legend");
+  legend.innerHTML = SERIES.map((s, i) => `<span><i style="background:var(${SVAR[i]})"></i>${s}</span>`).join("");
+  const svg = document.getElementById("shap");
+  const rows = D.combos;
+  const W = 900, rowH = 34, L = 250, R = 20, T = 10;
+  const H = T + rows.length * rowH + 30;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  let lo = 0, hi = 0;
+  for (const c of rows) {
+    let p = 0, n = 0;
+    for (const s of SERIES) { const v = c.groups[s] || 0; if (v >= 0) p += v; else n += v; }
+    hi = Math.max(hi, p); lo = Math.min(lo, n);
+  }
+  hi = Math.ceil(hi + 0.5); lo = Math.floor(lo);
+  const sx = (v) => L + (v - lo) / (hi - lo) * (W - L - R);
+  for (let t = lo; t <= hi; t += 2) {
+    el("line", { x1: sx(t), x2: sx(t), y1: T, y2: H - 26, stroke: t === 0 ? "var(--muted)" : "var(--grid)" }, svg);
+    el("text", { x: sx(t), y: H - 8, "text-anchor": "middle" }, svg).textContent = t === 0 ? "0" : fmt(t).replace(".00", "");
+  }
+  rows.forEach((c, i) => {
+    const y = T + i * rowH;
+    if (i === 10) el("line", { x1: 0, x2: W, y1: y - 1, y2: y - 1, stroke: "var(--rule)", "stroke-dasharray": "4 4" }, svg);
+    const label = el("text", { x: L - 12, y: y + rowH / 2 + 4, "text-anchor": "end" }, svg);
+    label.style.fill = "var(--fg-2)"; label.style.font = "12px var(--mono)";
+    const d = c.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+    label.textContent = `#${c.rank} ${c.dmg}% ${c.hits}h ${c.clipped ? "★" : " "} ${d}`;
+    let pos = 0, neg = 0;
+    SERIES.forEach((s, k) => {
+      const v = c.groups[s] || 0;
+      if (Math.abs(v) < 0.005) return;
+      const a = v >= 0 ? pos : neg + v, b = v >= 0 ? pos + v : neg;
+      if (v >= 0) pos += v; else neg += v;
+      const x = sx(a), w = Math.max(1, sx(b) - sx(a) - 2);
+      const r = el("rect", { class: "bar", x, y: y + 7, width: w, height: rowH - 14, rx: 2, fill: `var(${SVAR[k]})` }, svg);
+      r.addEventListener("pointermove", (ev) => showTip(ev,
+        `#${c.rank}${c.clipped ? " (your clip)" : ""} vs ${c.opponent}<br>${c.dmg}% from ${c.sp}%, ${c.hits} hits, ${c.seconds}s<br>${s}: ${fmt(v)}<br>top features: ${c.top.slice(0, 3).map((t) => `${t.feature} ${fmt(t.shap)}`).join(", ")}`));
+      r.addEventListener("pointerleave", hideTip);
+    });
+  });
+  const cap = el("text", { x: 0, y: H - 8 }, svg); cap.textContent = "★ = your clip";
+
+  const table = document.getElementById("shapTable");
+  table.innerHTML = `<table><thead><tr><th>Combo</th>${SERIES.map((s) => `<th>${s}</th>`).join("")}<th>Opponent</th></tr></thead><tbody>${
+    rows.map((c) => `<tr><td>#${c.rank} ${c.dmg}% ${c.hits} hits${c.clipped ? " ★" : ""}</td>${SERIES.map((s) => `<td>${fmt(c.groups[s] || 0)}</td>`).join("")}<td>${c.opponent.replace(/</g, "&lt;")}</td></tr>`).join("")
+  }</tbody></table>`;
+  const btn = document.getElementById("tableToggle");
+  btn.addEventListener("click", () => {
+    table.hidden = !table.hidden;
+    btn.setAttribute("aria-expanded", String(!table.hidden));
+    btn.textContent = table.hidden ? "Show as table" : "Hide table";
+  });
+})();
+</script>
