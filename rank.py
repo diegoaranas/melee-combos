@@ -30,7 +30,7 @@ except FileNotFoundError:
 
 
 FRAME_COLS = ["offstageFrac", "killOffstage", "victimFreeFrac", "myAirFrac", "lcancels", "wavelands",
-              "airdodges", "jumps", "ledge", "victimXSpan", "victimMaxY", "myTravel"]
+              "airdodges", "jumps", "ledge", "victimActs", "victimXSpan", "victimMaxY", "myTravel"]
 
 
 def load_frame_features():
@@ -67,6 +67,7 @@ def features(d):
     X["singles"] = d.singles
     X["maxGap"] = np.log1p(d.maxGap.clip(lower=0))
     X["meanGap"] = np.log1p(d.meanGap.clip(lower=0))
+    X["maxRun"] = d.maxRun
     for k in ["aerialFrac", "smashFrac", "grabFrac", "downBFrac", "repeatFrac",
               "killAerial", "killSmash", "killDownB", "killThrow"]:
         X[k] = d[k]
@@ -74,7 +75,8 @@ def features(d):
         X["framed"] = d.framed
         for k in ["offstageFrac", "killOffstage", "victimFreeFrac", "myAirFrac"]:
             X[k] = d[k]
-        for k in ["lcancels", "wavelands", "airdodges", "jumps", "ledge"]:
+        X["victimActsPerSec"] = d.victimActs / d.seconds
+        for k in ["lcancels", "wavelands", "airdodges", "jumps", "ledge", "victimActs"]:
             X[k] = np.log1p(d[k])
         for k in ["victimXSpan", "victimMaxY", "myTravel"]:
             X[k] = np.log1p(d[k].clip(lower=0))

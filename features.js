@@ -30,6 +30,8 @@ function moveFeatures(moves) {
   const counts = {};
   for (const i of ids) counts[i] = (counts[i] || 0) + 1;
   const last = ids[ids.length - 1];
+  let maxRun = ids.length ? 1 : 0;
+  for (let i = 1, run = 1; i < ids.length; i++) maxRun = Math.max(maxRun, (run = ids[i] === ids[i - 1] ? run + 1 : 1));
   return {
     maxGap: gaps.length ? Math.max(...gaps) : 0,
     meanGap: gaps.length ? (gaps.reduce((a, b) => a + b, 0) / gaps.length).toFixed(1) : 0,
@@ -38,6 +40,7 @@ function moveFeatures(moves) {
     grabFrac: frac(GRABBY).toFixed(2),
     downBFrac: frac([DOWN_B]).toFixed(2),
     repeatFrac: (Math.max(0, ...Object.values(counts)) / n).toFixed(2),
+    maxRun, // longest streak of the same move, e.g. four nairs in a row
     killAerial: AERIALS.includes(last) ? 1 : 0,
     killSmash: SMASHES.includes(last) ? 1 : 0,
     killDownB: last === DOWN_B ? 1 : 0,
@@ -49,7 +52,7 @@ const cols = [
   "id", "file", "s", "e", "me", "them", "stage", "opponent", "label",
   "dmg", "hits", "distinct", "sp", "ep", "kill", "zeroToDeath", "ragequit", "gameWinner",
   "seconds", "hitsPerSec", "maxHitShare", "neutralWin", "lastMove", "singles",
-  "maxGap", "meanGap", "aerialFrac", "smashFrac", "grabFrac", "downBFrac", "repeatFrac",
+  "maxGap", "meanGap", "aerialFrac", "smashFrac", "grabFrac", "downBFrac", "repeatFrac", "maxRun",
   "killAerial", "killSmash", "killDownB", "killThrow",
 ];
 const out = [cols.join(",")];

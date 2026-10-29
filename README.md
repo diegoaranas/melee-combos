@@ -5,7 +5,7 @@ Find clip-worthy punishes in my Slippi replays (`C:\Games\Slippi Replays`, conne
 ## Review loop
 
 ```
-node review.js 40          # plays 40 unrated top candidates in Dolphin; x=great g=good b=bad q=quit
+node review.js 40          # plays 40 unrated top candidates in Dolphin one at a time; x=great g=good b=bad s=skip r=replay q=quit
 python rank.py --no-cv     # re-rank using the new ratings
 ```
 

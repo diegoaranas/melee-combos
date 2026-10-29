@@ -4,4 +4,4 @@ cd /d "%~dp0"
 set N=%1
 if "%N%"=="" set N=20
 python top.py %N% || (pause & exit /b 1)
-call play.bat out\queue_top.json
+call "%~dp0play.bat" out\queue_top.json

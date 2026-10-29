@@ -13,6 +13,14 @@ const AIR_DODGE = 236;
 const JUMPS = [25, 26, 27, 28];
 const CLIFF_CATCH = 252;
 
+// Victim states entered by choice: jumps, ground and aerial attacks, grab, shield, rolls and
+// dodges, and character specials (341+). isInControl() only covers grounded states, so it
+// misses a victim who jumps, air-dodges or throws out an aerial mid-punish.
+function isVictimAction(st) {
+  return (st >= 24 && st <= 28) || (st >= 44 && st <= 74) || st === 212 ||
+    (st >= 178 && st <= 182) || (st >= 233 && st <= 236) || st >= 341;
+}
+
 const games = fs.readdirSync("data").filter((f) => /^index_\d+\.jsonl$/.test(f))
   .flatMap((f) => fs.readFileSync(`data/${f}`, "utf8").split("\n").filter(Boolean).map(JSON.parse))
   .filter((g) => g.conversions && g.players.some((p) => p.code === USER_CODE))
@@ -37,7 +45,7 @@ for (const g of games) {
       const end = c.e ?? g.lastFrame;
       let n = 0, offstage = 0, victimFree = 0, myAir = 0, lcancels = 0, wavelands = 0, airdodges = 0, jumps = 0, ledge = 0;
       let vMinX = Infinity, vMaxX = -Infinity, vMaxY = -Infinity, myTravel = 0, prevX = null;
-      let prevMyState = null;
+      let prevMyState = null, prevVicState = null, victimActs = 0;
       let killX = null, killY = null;
       for (let f = c.s; f <= end; f++) {
         const fr = frames[f];
@@ -53,6 +61,9 @@ for (const g of games) {
           killX = vx; killY = vy;
         }
         if (isInControl(vic.actionStateId)) victimFree++;
+        // Count each action once: multi-part specials and shield chain through several states.
+        if (isVictimAction(vic.actionStateId) && !(prevVicState != null && isVictimAction(prevVicState))) victimActs++;
+        prevVicState = vic.actionStateId;
         if (mine.isAirborne) myAir++;
         if (mine.lCancelStatus === 1) lcancels++;
         if (prevX != null) myTravel += Math.abs(mine.positionX - prevX);
@@ -73,7 +84,7 @@ for (const g of games) {
         killOffstage: c.kill && killX != null && (Math.abs(killX) > edge || killY < -5) ? 1 : 0,
         victimFreeFrac: +(victimFree / n).toFixed(3),
         myAirFrac: +(myAir / n).toFixed(3),
-        lcancels, wavelands, airdodges, jumps, ledge,
+        lcancels, wavelands, airdodges, jumps, ledge, victimActs,
         victimXSpan: +(vMaxX - vMinX).toFixed(1),
         victimMaxY: +vMaxY.toFixed(1),
         myTravel: +myTravel.toFixed(1),
