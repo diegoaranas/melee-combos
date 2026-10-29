@@ -9,8 +9,11 @@ node review.js 40          # plays 40 unrated top candidates in Dolphin one at a
 python rank.py --no-cv     # re-rank using the new ratings
 ```
 
-Each batch is 80% top-ranked and 20% random picks from ranks ~30–3000, so the model also
-learns from things it is unsure about. Ratings go to `data/ratings.csv`. A "bad" rating counts
+Each batch is 80% top-ranked and 20% exploration (half the best-ranked non-kills, half random
+picks from ranks ~30–3000), so the model also learns from things it is unsure about. Four
+already-rated punishes are mixed in unmarked (`repeat=1` in the ratings) to measure how
+consistent the ratings are. After `b`, a second key records why: 1=repetitive, 2=opponent
+acting mid-punish, 3=other. Ratings go to `data/ratings.csv`. A "bad" rating counts
 much more than an unclipped punish, and "good"/"great" count as positives.
 
 `python rank.py` (without `--no-cv`) also reports where each hand-made clip ranks when it is
