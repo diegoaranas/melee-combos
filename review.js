@@ -18,6 +18,7 @@ const RATINGS = "data/ratings.csv";
 const LEAD_IN = 90; // frames shown before the punish starts
 const TAIL = 60;
 const EXPLORE = 0.2; // share of the batch drawn from further down the ranking
+const WIDE_SHARE = 0.05; // widest share of big punishes (by victim travel) counted as "wide"
 const REPEATS = 4; // already-rated punishes added to the batch
 const HEADER = "file,s,rating,time,reason,repeat";
 const REASONS = { 1: "repetitive", 2: "opponent", 3: "other" };
@@ -46,11 +47,21 @@ const rated = new Set(readCsv(RATINGS).map((r) => `${r.file}|${r.s}`));
 const unrated = ranked.filter((r) => !rated.has(`${r.file}|${r.s}`) && r.label !== "1");
 const nTop = Math.round(count * (1 - EXPLORE));
 const batch = unrated.slice(0, nTop);
-// The top of the ranking is almost all kills, so half the exploration picks are the
+// The top of the ranking is almost all kills, so a third of the exploration picks are the
 // best-ranked non-kills; otherwise the ratings never tell the model whether those are worth it.
-const nonKills = unrated.slice(nTop).filter((r) => r.kill !== "1").slice(0, Math.ceil((count - nTop) / 2));
+const nExplore = Math.ceil((count - nTop) / 3);
+const nonKills = unrated.slice(nTop).filter((r) => r.kill !== "1").slice(0, nExplore);
 batch.push(...nonKills);
-const pool = unrated.slice(nTop, 3000).filter((r) => !nonKills.includes(r));
+// Another third are big punishes that carry the victim furthest across the stage: few of them
+// were ever clipped or rated, so the model has almost no data on them.
+const big = ranked.filter((r) => Number(r.dmg) >= 50 && Number(r.victimXSpan) > 0);
+const spans = big.map((r) => Number(r.victimXSpan)).sort((a, b) => a - b);
+const wideMin = spans[Math.floor(spans.length * (1 - WIDE_SHARE))] ?? Infinity;
+const wide = unrated.slice(nTop)
+  .filter((r) => Number(r.dmg) >= 50 && Number(r.victimXSpan) >= wideMin && !nonKills.includes(r))
+  .slice(0, nExplore);
+batch.push(...wide);
+const pool = unrated.slice(nTop, 3000).filter((r) => !nonKills.includes(r) && !wide.includes(r));
 while (batch.length < count && pool.length) batch.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
 const ratedPool = ranked.filter((r) => rated.has(`${r.file}|${r.s}`));
 for (let k = 0; k < REPEATS && ratedPool.length; k++) {

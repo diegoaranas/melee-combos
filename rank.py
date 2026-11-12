@@ -133,5 +133,5 @@ if MODEL == "logit":
     for name, w in sorted(zip(X.columns, m.coef_[0]), key=lambda t: -abs(t[1])):
         print(f"   {name:12s} {w:+.2f}")
 # Opponent goes last because names can contain commas (review.js splits naively).
-REVIEW_COLS = ["file", "s", "e", "label", "rating", "score", "dmg", "kill", "hits", "sp", "opponent"]
+REVIEW_COLS = ["file", "s", "e", "label", "rating", "score", "dmg", "kill", "hits", "sp", "victimXSpan", "opponent"]
 df.sort_values("score", ascending=False)[REVIEW_COLS].to_csv("data/ranked.csv", index=False)

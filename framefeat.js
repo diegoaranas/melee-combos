@@ -47,6 +47,9 @@ for (const g of games) {
       let vMinX = Infinity, vMaxX = -Infinity, vMaxY = -Infinity, myTravel = 0, prevX = null;
       let prevMyState = null, prevVicState = null, victimActs = 0;
       let killX = null, killY = null;
+      // Horizontal travel stops at the last hit, so a kill's launch towards the blast zone
+      // doesn't count as the punish carrying the victim across the stage.
+      const lastHit = c.moves?.length ? c.moves[c.moves.length - 1][1] : end;
       for (let f = c.s; f <= end; f++) {
         const fr = frames[f];
         if (!fr) continue;
@@ -56,7 +59,8 @@ for (const g of games) {
         n++;
         const vx = vic.positionX, vy = vic.positionY;
         if (!isDead(vic.actionStateId)) {
-          vMinX = Math.min(vMinX, vx); vMaxX = Math.max(vMaxX, vx); vMaxY = Math.max(vMaxY, vy);
+          if (f <= lastHit) { vMinX = Math.min(vMinX, vx); vMaxX = Math.max(vMaxX, vx); }
+          vMaxY = Math.max(vMaxY, vy);
           if (Math.abs(vx) > edge || vy < -5) offstage++;
           killX = vx; killY = vy;
         }
@@ -85,7 +89,7 @@ for (const g of games) {
         victimFreeFrac: +(victimFree / n).toFixed(3),
         myAirFrac: +(myAir / n).toFixed(3),
         lcancels, wavelands, airdodges, jumps, ledge, victimActs,
-        victimXSpan: +(vMaxX - vMinX).toFixed(1),
+        victimXSpan: vMaxX >= vMinX ? +(vMaxX - vMinX).toFixed(1) : 0,
         victimMaxY: +vMaxY.toFixed(1),
         myTravel: +myTravel.toFixed(1),
       });
