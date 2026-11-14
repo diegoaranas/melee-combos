@@ -11,7 +11,8 @@ const games = fs.readdirSync("data").filter((f) => /^index_\d+\.jsonl$/.test(f))
 
 // Punishes matched to hand-made video clips (match.js / compare.js) are labelled positive.
 // Only the repo owner has these; everyone else's labels come from ratings.
-const clipWindows = fs.existsSync("data/clipped_combos.json") ? require("./data/clipped_combos.json") : [];
+// Read at runtime, not require()d: the exe bundler would embed the file.
+const clipWindows = fs.existsSync("data/clipped_combos.json") ? JSON.parse(fs.readFileSync("data/clipped_combos.json", "utf8")) : [];
 const clipped = new Set(clipWindows.filter((r) => r.main).map((r) => `${r.replay}|${r.main.s}`));
 // Rage-quit clips have no closed punish; label the open punish in that clip's window instead.
 
