@@ -26,4 +26,7 @@ for (const [target, name] of targets) {
     `--define=process.env.APP_VERSION="${version}"`, "app.js", "--outfile", path.join("dist", name)],
     { stdio: "inherit" });
   if (r.status) process.exit(r.status);
+  // Cross-compiling for Windows on Linux leaves the file unreadable, which breaks the release
+  // upload.
+  fs.chmodSync(path.join("dist", name), 0o755);
 }
