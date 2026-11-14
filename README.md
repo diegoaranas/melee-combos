@@ -5,6 +5,9 @@ and makes videos of them.
 
 ## Download
 
+New to it? The [step-by-step guide](https://diegoaranasegura.com/melee-combos/) walks through
+setup, rating and sending your ratings back.
+
 1. Download [`melee-combos_windows_amd64.exe`](https://github.com/diegoaranas/melee-combos/releases/latest/download/melee-combos_windows_amd64.exe)
    from the [latest release](https://github.com/diegoaranas/melee-combos/releases/latest).
 2. Put it in its own folder. It keeps its data next to itself.
