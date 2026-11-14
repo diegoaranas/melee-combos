@@ -17,11 +17,34 @@ function launcherSettings() {
   }
 }
 
-function defaults() {
+// Slippi Launcher only saves rootSlpPath once it's changed; until then it uses Documents\Slippi.
+// Documents can be redirected (often into OneDrive), so ask Windows where it is if the usual
+// places don't have it.
+let defaultReplays;
+function defaultReplayDir() {
+  if (defaultReplays !== undefined) return defaultReplays;
+  const home = require("os").homedir();
+  const docs = [path.join(home, "Documents")];
+  if (process.env.OneDrive) docs.push(path.join(process.env.OneDrive, "Documents"));
+  docs.push(path.join(home, "OneDrive", "Documents"));
+  if (process.platform === "win32") {
+    try {
+      const r = require("child_process").spawnSync("powershell",
+        ["-NoProfile", "-Command", "[Environment]::GetFolderPath('MyDocuments')"], { encoding: "utf8", timeout: 10000 });
+      const p = (r.stdout || "").trim();
+      if (p) docs.unshift(p);
+    } catch {}
+  }
+  defaultReplays = docs.map((d) => path.join(d, "Slippi")).find((p) => fs.existsSync(p)) || null;
+  return defaultReplays;
+}
+
+// `saved` is config.json: a folder it already names skips the (slower) default lookup.
+function defaults(saved = {}) {
   const s = launcherSettings();
   return {
     code: null,
-    replays: s.rootSlpPath || null,
+    replays: saved.replays || s.rootSlpPath || defaultReplayDir(),
     iso: s.isoPath || null,
     dolphin: path.join(LAUNCHER, "playback", process.platform === "win32" ? "Slippi Dolphin.exe" : "Slippi_Playback"),
   };
@@ -29,7 +52,7 @@ function defaults() {
 
 function load({ requireCode = true } = {}) {
   const saved = fs.existsSync(CONFIG_FILE) ? JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8")) : {};
-  const cfg = { ...defaults(), ...saved };
+  const cfg = { ...defaults(saved), ...saved };
   if (requireCode && !cfg.code) {
     console.error("No connect code configured. Run: node setup.js");
     process.exit(1);

@@ -37,18 +37,30 @@ async function ask(q) {
 }
 
 // Returns the config, or throws with a message saying what to fix.
+// Ask for a path until it exists. Accepts paths pasted with quotes (Explorer's "Copy as path").
+async function askPath(question, ok) {
+  for (;;) {
+    const p = (await ask(question)).replace(/^"(.*)"$/, "$1").trim();
+    if (p && fs.existsSync(p) && ok(p)) return path.resolve(p);
+    console.log(p ? `  Couldn't find that (${p}). Try again.` : "  Paste a path, then press Enter.");
+  }
+}
+
 async function setup(codeArg) {
   const cfg = load({ requireCode: false });
-  const problems = [];
-  if (!cfg.replays || !fs.existsSync(cfg.replays)) problems.push(`replay folder not found (${cfg.replays || "not set in Slippi Launcher"})`);
-  if (!cfg.iso || !fs.existsSync(cfg.iso)) problems.push(`Melee ISO not found (${cfg.iso || "not set in Slippi Launcher"})`);
-  if (!fs.existsSync(cfg.dolphin)) problems.push(`Slippi playback Dolphin not found (${cfg.dolphin})`);
-  if (problems.length) {
+  if (!cfg.replays || !fs.existsSync(cfg.replays)) {
+    console.log("Couldn't find your Slippi replay folder. In Slippi Launcher it's under Settings > Replays.");
+    cfg.replays = await askPath("Paste the replay folder's path (e.g. C:\\Users\\you\\Documents\\Slippi): ",
+      (p) => fs.statSync(p).isDirectory());
+  }
+  if (!cfg.iso || !fs.existsSync(cfg.iso)) {
+    console.log("Couldn't find your Melee ISO. In Slippi Launcher it's under Settings > Melee ISO File.");
+    cfg.iso = await askPath("Paste the path to your Melee .iso file: ", (p) => fs.statSync(p).isFile());
+  }
+  if (!fs.existsSync(cfg.dolphin)) {
     throw new Error(
-      "Setup problem:\n  - " + problems.join("\n  - ") +
-      "\nOpen Slippi Launcher, set your replay folder and Melee ISO in its settings, and watch one replay\n" +
-      `there once (that installs the playback Dolphin). Or write the paths into ${CONFIG_FILE}:\n` +
-      `  { "code": "ABCD#123", "replays": "...", "iso": "...", "dolphin": "..." }`
+      "Slippi's replay player isn't installed yet.\n" +
+      "Open Slippi Launcher, watch any replay once (that installs it), then start this app again."
     );
   }
   let code = codeArg || cfg.code;
