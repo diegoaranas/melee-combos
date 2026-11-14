@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="How to set up melee-combos, rate your Slippi punishes and send your ratings back.">
+<title>melee-combos Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one reading column; a terminal panel and keycaps carry the app's own look. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --fg: #16181d;
+  --muted: #5b616e;
+  --line: #dde0e6;
+  --accent: #1f8f4e;
+  --accent-ink: #ffffff;
+  --term-bg: #12151b;
+  --term-fg: #d8dde6;
+  --term-dim: #7d8696;
+  --warn-bg: #fff6e0;
+  --warn-line: #e8c46a;
+  --key-bg: #ffffff;
+  --key-edge: #c9cdd6;
+  --font-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --surface: #171b21; --fg: #e7eaf0; --muted: #9aa2b1; --line: #2a303a;
+    --accent: #3cc173; --accent-ink: #08130c; --term-bg: #0a0c10; --term-fg: #d8dde6; --term-dim: #7d8696;
+    --warn-bg: #2a2412; --warn-line: #7a6326; --key-bg: #222831; --key-edge: #3a424e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #171b21; --fg: #e7eaf0; --muted: #9aa2b1; --line: #2a303a;
+  --accent: #3cc173; --accent-ink: #08130c; --term-bg: #0a0c10; --term-fg: #d8dde6; --term-dim: #7d8696;
+  --warn-bg: #2a2412; --warn-line: #7a6326; --key-bg: #222831; --key-edge: #3a424e;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2.2rem, 7vw, 3.2rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; font-weight: 800; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+code, kbd { font-family: var(--font-mono); font-size: 0.9em; }
+section { display: flex; flex-direction: column; gap: 16px; }
+.eyebrow {
+  font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent);
+}
+
+/* Hero */
+.hero { display: flex; flex-direction: column; gap: 18px; }
+.lede { font-size: 1.15rem; color: var(--muted); max-width: 58ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent); color: var(--accent-ink);
+  font-weight: 600; text-decoration: none;
+  padding: 12px 20px; border-radius: 8px;
+}
+.btn.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.needs { font-size: 0.95rem; color: var(--muted); }
+
+/* Numbered setup: the order matters */
+ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; counter-reset: step; }
+ol.steps > li {
+  counter-increment: step;
+  display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 14px; align-items: start;
+}
+ol.steps > li::before {
+  content: counter(step);
+  font-family: var(--font-display); font-weight: 800; font-size: 1rem;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid var(--accent); color: var(--accent);
+}
+ol.steps > li > div { display: flex; flex-direction: column; gap: 4px; padding-top: 3px; }
+.sub { color: var(--muted); font-size: 0.95rem; }
+
+.note {
+  background: var(--warn-bg); border: 1px solid var(--warn-line);
+  border-radius: 8px; padding: 12px 14px; font-size: 0.95rem;
+}
+
+/* The app's own window */
+.term {
+  background: var(--term-bg); color: var(--term-fg);
+  font-family: var(--font-mono); font-size: 0.88rem; line-height: 1.7;
+  border-radius: 10px; padding: 16px 18px; margin: 0;
+  overflow-x: auto; white-space: pre;
+}
+.term .dim { color: var(--term-dim); }
+
+.menu-notes { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; margin: 0; }
+.menu-notes dt { font-family: var(--font-mono); font-weight: 700; color: var(--accent); }
+.menu-notes dd { margin: 0; }
+
+/* Keycaps */
+.keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.key { display: flex; align-items: center; gap: 12px; }
+kbd {
+  display: inline-grid; place-items: center;
+  min-width: 34px; height: 34px; padding: 0 8px;
+  background: var(--key-bg); color: var(--fg);
+  border: 1px solid var(--key-edge); border-bottom-width: 3px; border-radius: 6px;
+  font-weight: 700; font-size: 0.95rem;
+}
+.key span { font-weight: 500; }
+.bad-why { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 0.95rem; align-items: center; }
+.bad-why kbd { min-width: 28px; height: 28px; font-size: 0.85rem; }
+
+/* What's in the zip */
+.zip { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.zip-row { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); gap: 12px; padding: 14px 16px; }
+.zip-row + .zip-row { border-top: 1px solid var(--line); }
+.zip-row code { font-weight: 700; overflow-wrap: anywhere; }
+
+/* Troubleshooting */
+details { border-bottom: 1px solid var(--line); padding: 12px 0; }
+details:first-of-type { border-top: 1px solid var(--line); }
+summary { cursor: pointer; font-weight: 600; }
+summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+details p { margin-top: 8px; color: var(--muted); }
+
+footer { color: var(--muted); font-size: 0.9rem; }
+
+@media (max-width: 520px) {
+  .zip-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .wrap { gap: 36px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <span class="eyebrow">For Slippi players</span>
+    <h1>melee-combos</h1>
+    <p class="lede">Finds the best punishes in your Slippi replays, learns which ones you like as you rate them, and turns your favourites into videos.</p>
+    <div class="actions">
+      <a class="btn" href="https://github.com/diegoaranas/melee-combos/releases/latest">Download from GitHub</a>
+      <a class="btn secondary" href="https://github.com/diegoaranas/melee-combos">About the app</a>
+    </div>
+    <p class="needs">Needs Windows and Slippi Launcher. Free, open source, about 120 MB.</p>
+  </header>
+
+  <section aria-labelledby="before">
+    <h2 id="before">Before you start</h2>
+    <p>In <strong>Slippi Launcher → Settings</strong>, make sure your <strong>replay folder</strong> and <strong>Melee ISO</strong> are set. If you've never watched a replay in Slippi Launcher, watch one once: that installs the replay player the app uses.</p>
+  </section>
+
+  <section aria-labelledby="setup">
+    <h2 id="setup">Set it up</h2>
+    <ol class="steps">
+      <li><div>
+        <h3>Download the app</h3>
+        <p class="sub">On the GitHub page, under <strong>Assets</strong>, click <code>melee-combos_windows_amd64.exe</code>.</p>
+      </div></li>
+      <li><div>
+        <h3>Give it its own folder</h3>
+        <p class="sub">Make a new folder, for example <code>Documents\melee-combos</code>, and move the file there. The app saves its data next to itself.</p>
+      </div></li>
+      <li><div>
+        <h3>Double-click it</h3>
+        <p class="sub">Windows will probably show "Windows protected your PC". Click <strong>More info</strong>, then <strong>Run anyway</strong>. It shows this for any app that isn't signed with a paid certificate.</p>
+      </div></li>
+      <li><div>
+        <h3>Confirm your connect code</h3>
+        <p class="sub">It guesses your code from your replays. Press <kbd>Enter</kbd> if it's right, or type yours.</p>
+      </div></li>
+      <li><div>
+        <h3>Let it read your replays</h3>
+        <p class="sub">The first time, it goes through every replay you have: a few minutes per thousand. After that it only reads new games and starts in seconds.</p>
+      </div></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="menu">
+    <h2 id="menu">The menu</h2>
+    <pre class="term" aria-label="The app's menu"><span class="dim">You've rated 0 punishes.</span>
+  1  Rate punishes
+  2  Watch my top 20 in Dolphin
+  3  Make videos of the punishes I rated great
+  4  Make my ratings package (to send back)
+  5  Check for new replays
+  q  Quit
+<span class="dim">&gt;</span></pre>
+    <dl class="menu-notes">
+      <dt>1</dt><dd>Rate a batch of 40. The more you rate, the better it gets at finding the ones you like.</dd>
+      <dt>2</dt><dd>Watch what it currently thinks are your 20 best.</dd>
+      <dt>3</dt><dd>Makes 1080p videos of everything you rated great, in <code>out\clips</code>. The first time, it downloads ffmpeg (about 200 MB). Each clip takes about 40 seconds.</dd>
+      <dt>4</dt><dd>Packs your ratings to send back. See below.</dd>
+      <dt>5</dt><dd>Reads games you've played since you opened the app.</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="rating">
+    <h2 id="rating">Rating punishes</h2>
+    <p>A Dolphin window plays one punish at a time. <strong>Click back on the app's black window</strong> so it hears your keys, then press:</p>
+    <div class="keys">
+      <div class="key"><kbd>x</kbd><span>Great</span></div>
+      <div class="key"><kbd>g</kbd><span>Good</span></div>
+      <div class="key"><kbd>b</kbd><span>Bad</span></div>
+      <div class="key"><kbd>s</kbd><span>Skip</span></div>
+      <div class="key"><kbd>r</kbd><span>Replay</span></div>
+      <div class="key"><kbd>q</kbd><span>Stop for now</span></div>
+    </div>
+    <div class="bad-why">After <kbd>b</kbd>, say why:
+      <span><kbd>1</kbd> repetitive</span>
+      <span><kbd>2</kbd> opponent was acting</span>
+      <span><kbd>3</kbd> something else</span>
+    </div>
+    <p>Rate the boring ones honestly too: a "bad" teaches it as much as a "great". You can stop any time, and your ratings are saved as you go.</p>
+  </section>
+
+  <section aria-labelledby="send">
+    <h2 id="send">Sending your ratings back</h2>
+    <p>Pick <strong>4</strong>. The app makes <code>ratings-YOURCODE.zip</code> next to itself and opens the folder. Send that file to whoever gave you the app. If it's over Discord's 10 MB limit, upload it to Google Drive and send the link.</p>
+    <div class="zip" role="table" aria-label="What's in the zip">
+      <div class="zip-row" role="row">
+        <code role="cell">ratings-YOURCODE.json</code>
+        <span role="cell">Your ratings and the numbers used to rank each punish (damage, hits, kill, movement). No folder paths and no opponent names. This part gets built into the next version of the app, so everyone's ranking improves.</span>
+      </div>
+      <div class="zip-row" role="row">
+        <code role="cell">replays\</code>
+        <span role="cell">Only the games your rated punishes come from, so the ranking can be recomputed when it improves. They show your opponents' tags, so they stay private and are never published.</span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="update">
+    <h2 id="update">Updating</h2>
+    <p>Download the new version and replace the old file in the same folder. Your ratings and replay data stay where they are. New versions also include everyone else's ratings.</p>
+  </section>
+
+  <section aria-labelledby="help">
+    <h2 id="help">If something goes wrong</h2>
+    <div>
+      <details>
+        <summary>It says the playback Dolphin wasn't found</summary>
+        <p>Open Slippi Launcher and watch any replay once. That installs the replay player. Then start the app again.</p>
+      </details>
+      <details>
+        <summary>It says the replay folder or Melee ISO wasn't found</summary>
+        <p>Set both in Slippi Launcher's settings, then start the app again.</p>
+      </details>
+      <details>
+        <summary>Pressing keys does nothing while rating</summary>
+        <p>The Dolphin window has focus. Click on the app's black window and press the key again.</p>
+      </details>
+      <details>
+        <summary>The window closed right away</summary>
+        <p>It may have been moved out of its folder or blocked by antivirus. Put it back in its own folder and run it again; if your antivirus quarantined it, allow it there.</p>
+      </details>
+      <details>
+        <summary>It picked the wrong connect code</summary>
+        <p>Delete <code>config.json</code> in the app's folder and start the app again. It will ask for your code.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>Source and technical details: <a href="https://github.com/diegoaranas/melee-combos">github.com/diegoaranas/melee-combos</a></footer>
+</div>
+</body>
+</html>
