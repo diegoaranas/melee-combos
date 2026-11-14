@@ -2,18 +2,18 @@
 // Output: data/features.csv (one row per punish), with label=1 for clipped punishes.
 const fs = require("fs");
 
-const USER_CODE = "1SHINE#0";
+const USER_CODE = require("./config").load().code;
 const GAME_END = { TIME: 1, GAME: 2, NO_CONTEST: 7 };
 
 const games = fs.readdirSync("data").filter((f) => /^index_\d+\.jsonl$/.test(f))
   .flatMap((f) => fs.readFileSync(`data/${f}`, "utf8").split("\n").filter(Boolean).map(JSON.parse))
   .filter((g) => g.conversions);
 
-const clipped = new Set(
-  require("./data/clipped_combos.json").filter((r) => r.main).map((r) => `${r.replay}|${r.main.s}`)
-);
+// Punishes matched to hand-made video clips (match.js / compare.js) are labelled positive.
+// Only the repo owner has these; everyone else's labels come from ratings.
+const clipWindows = fs.existsSync("data/clipped_combos.json") ? require("./data/clipped_combos.json") : [];
+const clipped = new Set(clipWindows.filter((r) => r.main).map((r) => `${r.replay}|${r.main.s}`));
 // Rage-quit clips have no closed punish; label the open punish in that clip's window instead.
-const clipWindows = require("./data/clipped_combos.json").map((r) => r);
 
 // Move ids from slippi-js `moves`.
 const AERIALS = [13, 14, 15, 16, 17];

@@ -11,13 +11,18 @@ __pycache__/
 *.pyc
 .venv/
 
-# Generated data (rebuild with index.js, framefeat.js, features.js, rank.py, ...)
-data/*
-# Hand-made inputs and small results are kept
-!data/clips.json
-!data/matches.json
-!data/clipped_combos.json
-!data/ratings.csv
+# Everything personal or generated stays local: replays index, features, ratings, clip
+# matches, queues, videos. Ratings travel as anonymised shared/<code>.json files.
+data/
+out/
+config.json
+render/
+tools/
+ratings-*.json
+ratings-*.zip
+# Friends' replays (they name their opponents); only shared/*.json is public
+received/
 
-# Temporary review queue
-out/review_queue.json
+# Build output
+dist/
+starter.json

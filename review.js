@@ -6,14 +6,13 @@
 //
 // Keys:  x = great   g = good   b = bad   s = skip   r = replay   q = quit
 // After b:  1 = repetitive   2 = opponent acting mid-punish   3 = other   (Esc = cancel)
-// Ratings are appended to data/ratings.csv; rerun `python rank.py --no-cv` afterwards to re-rank.
+// Ratings are appended to data/ratings.csv; rerun `node update.js` afterwards to re-rank.
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
 const { spawn } = require("child_process");
 
-const DOLPHIN = path.join(process.env.APPDATA, "Slippi Launcher", "playback", "Slippi Dolphin.exe");
-const ISO = "C:\\Games\\GC and Wii\\Melee v1.02\\GALE01\\game.iso";
+const { dolphin: DOLPHIN, iso: ISO } = require("./config").load();
 const RATINGS = "data/ratings.csv";
 const LEAD_IN = 90; // frames shown before the punish starts
 const TAIL = 60;
@@ -77,6 +76,7 @@ const segments = batch.map((r) => ({
 
 // Dolphin gets one segment at a time. It reloads the comm file whenever commandId changes,
 // so the next segment only starts once the current one has been rated (or skipped).
+fs.mkdirSync("out", { recursive: true });
 const commFile = path.resolve("out/review_queue.json");
 let current = -1;
 let nRated = 0;
@@ -113,7 +113,7 @@ function rate(value, reason = "") {
 }
 
 function finish() {
-  console.log(`\nRated ${nRated}/${batch.length}. Re-rank with: python rank.py --no-cv`);
+  console.log(`\nRated ${nRated}/${batch.length}.`);
   process.exit(0);
 }
 

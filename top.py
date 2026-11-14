@@ -19,6 +19,8 @@ top["clipped"] = top.label.map({1: "yes", 0: ""})
 print(top[["date", "matchup", "stage", "opponent", "dmg", "sp", "hits", "seconds", "kill", "clipped"]]
       .rename(columns={"sp": "from%", "seconds": "secs"}).round(1).to_string(index=True))
 queue = {"mode": "queue", "replay": "", "isRealTimeMode": False, "outputOverlayFiles": False,
-         "queue": [{"path": r.file, "startFrame": max(-123, int(r.s) - 90), "endFrame": int(r.e) + 60}
-                   for r in top.itertuples()]}
+         "queue": [{"path": r.file, "startFrame": max(-123, int(r.s) - 90), "endFrame": int(r.e) + 60,
+                    # Used by render.js for the mp4 file name; Dolphin ignores it.
+                    "name": f"{i + 1:03d}_{r.date}_{r.matchup.replace(' ', '-')}_{round(r.dmg)}pct"}
+                   for i, r in enumerate(top.itertuples())]}
 json.dump(queue, open("out/queue_top.json", "w"), indent=1)

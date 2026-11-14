@@ -2,7 +2,7 @@
 // (conversions) where the user is the attacker. Writes data/clippi_combos.json.
 const fs = require("fs");
 
-const USER_CODE = "1SHINE#0";
+const USER_CODE = require("./config").load().code;
 const PROFILE = {
   minComboPercent: 60,
   perCharMinComboPercents: { 15: 85 }, // Jigglypuff

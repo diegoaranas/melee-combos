@@ -3,7 +3,7 @@
 const fs = require("fs");
 const { SlippiGame, State, isInControl, isDead } = require("@slippi/slippi-js");
 
-const USER_CODE = "1SHINE#0";
+const USER_CODE = require("./config").load().code;
 const [worker, nworkers, out] = [Number(process.argv[2]), Number(process.argv[3]), process.argv[4]];
 
 // Main platform half-width per stage id; anything beyond it (or below it) is off-stage.
@@ -28,7 +28,10 @@ const games = fs.readdirSync("data").filter((f) => /^index_\d+\.jsonl$/.test(f))
   .filter((_, i) => i % nworkers === worker);
 
 const done = new Set();
-if (fs.existsSync(out)) for (const l of fs.readFileSync(out, "utf8").split("\n")) if (l) done.add(JSON.parse(l).file);
+// Skip games already in any ff file, so a different worker count doesn't parse them twice.
+for (const f of fs.readdirSync("data").filter((f) => /^ff_\d+\.jsonl$/.test(f))) {
+  for (const l of fs.readFileSync(`data/${f}`, "utf8").split("\n")) if (l) done.add(JSON.parse(l).file);
+}
 const fd = fs.openSync(out, "a");
 
 for (const g of games) {

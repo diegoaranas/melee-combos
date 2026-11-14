@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { SlippiGame } = require("@slippi/slippi-js");
 
-const ROOT = "C:\\Games\\Slippi Replays";
+const ROOT = require("./config").load().replays;
 const [worker, nworkers, out] = [Number(process.argv[2]), Number(process.argv[3]), process.argv[4]];
 
 function walk(dir) {
@@ -15,9 +15,11 @@ function walk(dir) {
 }
 
 const files = walk(ROOT).sort().filter((_, i) => i % nworkers === worker);
+// Skip games already in any index file, so a different worker count doesn't index them twice.
 const done = new Set();
-if (fs.existsSync(out)) {
-  for (const line of fs.readFileSync(out, "utf8").split("\n")) {
+const dataDir = path.dirname(out);
+for (const f of fs.readdirSync(dataDir).filter((f) => /^index_\d+\.jsonl$/.test(f))) {
+  for (const line of fs.readFileSync(path.join(dataDir, f), "utf8").split("\n")) {
     if (line) done.add(JSON.parse(line).file);
   }
 }
